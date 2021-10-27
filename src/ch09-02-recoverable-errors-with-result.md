@@ -385,7 +385,7 @@ and returns it. Of course, using `fs::read_to_string` doesn’t give us the
 opportunity to explain all the error handling, so we did it the longer way
 first.
 
-#### The `?` Operator Can Be Used in Functions That Return `Result`
+#### Where The `?` Operator Can Be Used
 
 The `?` operator can be used in functions that have a return type of
 `Result`, because it is defined to work in the same way as the `match`
@@ -414,6 +414,51 @@ have two choices. One technique is to change the return type of your function
 to be `Result<T, E>` if you have no restrictions preventing that. The other
 technique is to use a `match` or one of the `Result<T, E>` methods to handle
 the `Result<T, E>` in whatever way is appropriate.
+
+The error message also revealed that `?` can be used with `Option<T>` values as
+well, as long as calling `?` on an `Option<T>` happens in a function that
+returns an `Option`. The behavior of the `?` operator when called on an
+`Option<T>` is similar to its behavior when called on a `Result<T, E>`: if the
+value is `None`, the `None` will be returned early from the function at that
+point. If the value is `Some`, the value inside the `Some` is the resulting
+value of the expression and the function continues. Here's an example of a
+function that finds the last character of the first line in the given text:
+
+```rust
+fn last_char_of_first_line(text: &str) -> Option<char> {
+    text.lines().next()?.chars().last()
+}
+```
+
+This function returns `Option<char>` because it might find a character at this
+position, or there might be no character there. This code takes the `text`
+string slice argument and calls the `lines` method on it, which returns an
+iterator over the lines in the string. Because this function wants to examine
+the first line, it calls `next` on the iterator to get the first value from the
+iterator. If `text` is the empty string, this call to `next` will return
+`None`, and here we can use `?` to stop and return `None` from
+`last_char_of_first_line` if that is the case. If `text` is not the empty
+string, `next` will return a `Some` value containing a string slice of the
+first line in `text`.
+
+The `?` extracts the string slice, and we can call `chars` on that string slice
+to get an iterator of the characters in this string slice. We're interested in
+the last character in this first line, so we call `last` to return the last
+item in the iterator over the characters. This is an `Option` because the first
+line might be the empty string, if `text` starts with a blank line but has
+characters on other lines, as in `"\nhi"`. However, if there is a last
+character on the first line, it will be returned in the `Some` variant. The `?`
+operator in the middle gives us a concise way to express this logic, and this
+function can be implemented in one line. If we couldn't use the `?` operator on
+`Option`, we'd have to implement this logic using more method calls or a
+`match` expression.
+
+Note that you can use the `?` operator on a `Result` in a function that returns
+`Result`, and you can use the `?` operator on an `Option` in a function that
+returns `Option`, but you can't mix and match. The `?` operator won't
+automatically convert a `Result` to an `Option` or vice versa; in those cases,
+there are methods like the `ok` method on `Result` or the `ok_or` method on
+`Option` that will do the conversion explicitly.
 
 The `main` function is special, and there are restrictions on what its return
 type must be. One valid return type for main is `()`, and conveniently, another
